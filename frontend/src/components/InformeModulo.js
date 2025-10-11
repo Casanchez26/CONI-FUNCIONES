@@ -8,9 +8,7 @@ const InformeModulo = () => {
     const navigate = useNavigate();
 
     // --- ESTADOS PARA LA INFORMACIÓN DEL USUARIO ---
-    const [currentUserId, setCurrentUserId] = useState(null);
-    const [currentUserRol, setCurrentUserRol] = useState(null);
-    const [currentUserCargo, setCurrentUserCargo] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
     const [cargandoUsuario, setCargandoUsuario] = useState(true);
 
     // --- ESTADOS PARA EL INFORME ACTUAL ---
@@ -35,18 +33,37 @@ const InformeModulo = () => {
         // Puedes añadir más estados si los tienes en tu DB para equipos_perifericos.estado
     ];
 
-    // --- Obtener información del usuario desde localStorage ---
+    // --- EFECTO PARA OBTENER Y VERIFICAR EL USUARIO AUTENTICADO ---
     useEffect(() => {
-        const id = localStorage.getItem("idUsuario");
-        const rol = localStorage.getItem("rol");
-        const cargo = localStorage.getItem("cargoEmpleado");
+        const storedUserJSON = localStorage.getItem("usuarioLogueado");
+        
+        if (storedUserJSON) {
+            try {
+                const usuario = JSON.parse(storedUserJSON);
+                
+                // Usamos las propiedades del objeto JSON para verificar la sesión
+                const id = usuario.idUsuario || usuario.id; 
+                const rol = usuario.rolAutenticacion; 
+                const cargo = usuario.cargoEmpleado;
 
-        if (id && rol && cargo) {
-            setCurrentUserId(parseInt(id, 10));
-            setCurrentUserRol(rol);
-            setCurrentUserCargo(cargo);
+                if (id && rol && cargo) {
+                    setCurrentUser({ id, rol, cargo });
+                    
+                    // REGLA: Este módulo es solo para Administradores.
+                    if (rol !== 'admin') { 
+                        console.warn(`InformeModulo: Rol (${rol}) sin permiso. Redirigiendo a inicio.`);
+                        navigate("/");
+                    }
+                } else {
+                    console.warn("InformeModulo: Información de usuario incompleta. Redirigiendo a inicio.");
+                    navigate("/");
+                }
+            } catch (e) {
+                 console.error("Error al parsear datos del usuario de localStorage:", e);
+                navigate("/");
+            }
         } else {
-            console.warn("No se encontró información de usuario en localStorage. Redirigiendo a login.");
+            console.warn("InformeModulo: No se encontró 'usuarioLogueado' en localStorage. Redirigiendo a inicio.");
             navigate("/");
         }
         setCargandoUsuario(false);
@@ -54,7 +71,7 @@ const InformeModulo = () => {
 
     // --- FUNCIÓN PARA OBTENER EL INFORME DE INVENTARIO ACTUAL ---
     const fetchCurrentReport = useCallback(async () => {
-        if (!currentUserId) return;
+        if (!currentUser?.id) return;
 
         setCargandoReporte(true);
         setErrorReporte('');
@@ -81,11 +98,11 @@ const InformeModulo = () => {
         } finally {
             setCargandoReporte(false);
         }
-    }, [currentUserId, filterStatus]);
+    }, [currentUser?.id, filterStatus]);
 
     // --- FUNCIÓN PARA OBTENER LA LISTA DE INFORMES HISTÓRICOS ---
     const fetchHistoricalReports = useCallback(async () => {
-        if (!currentUserId) return;
+        if (!currentUser?.id) return;
 
         setCargandoHistorico(true);
         setErrorHistorico('');
@@ -107,15 +124,15 @@ const InformeModulo = () => {
         } finally {
             setCargandoHistorico(false);
         }
-    }, [currentUserId]);
+    }, [currentUser?.id]);
 
     // --- EFECTO PARA CARGAR EL INFORME ACTUAL Y LOS HISTÓRICOS AL MONTAR/CAMBIAR FILTRO ---
     useEffect(() => {
-        if (currentUserId) {
+        if (currentUser) {
             fetchCurrentReport();
             fetchHistoricalReports();
         }
-    }, [currentUserId, fetchCurrentReport, fetchHistoricalReports]);
+    }, [currentUser, fetchCurrentReport, fetchHistoricalReports]);
 
     // --- FUNCIÓN PARA GUARDAR Y DESCARGAR EL INFORME ACTUAL ---
     const handleGenerateAndDownload = async () => {
@@ -157,7 +174,7 @@ const InformeModulo = () => {
 
     // --- FUNCIÓN PARA DESCARGAR UN INFORME HISTÓRICO ESPECÍFICO ---
     const handleDownloadHistorical = async (reportId, filename) => {
-        if (!currentUserId) {
+        if (!currentUser?.id) {
             alert("Usuario no autenticado.");
             return;
         }
@@ -188,7 +205,7 @@ const InformeModulo = () => {
 
     // --- FUNCIÓN PARA VER DETALLES DE UN INFORME HISTÓRICO EN UN MODAL ---
     const handleViewHistorical = async (reportId) => {
-        if (!currentUserId) {
+        if (!currentUser?.id) {
             alert("Usuario no autenticado.");
             return;
         }
@@ -206,7 +223,7 @@ const InformeModulo = () => {
             setIsHistoricalModalOpen(true);
         } catch (err) {
             console.error('Error al ver informe histórico:', err);
-            alert(`No se pudo cargar el informe histórico para ver: ${err.message}.`);
+            alert(`No se pudo cargar el informe histórico: ${err.message}.`);
         }
     };
 
@@ -222,7 +239,6 @@ const InformeModulo = () => {
                 method: "GET",
                 credentials: "include"
             });
-
             if (response.ok) {
                 localStorage.removeItem("usuarioLogueado");
                 localStorage.removeItem("rol");
@@ -239,15 +255,6 @@ const InformeModulo = () => {
         }
     };
 
-    // Si el usuario aún está cargando o no está autenticado, muestra un mensaje
-    if (cargandoUsuario) {
-        return <p>Cargando información de usuario...</p>;
-    }
-
-    if (!currentUserId) {
-        return <p>Por favor, inicie sesión para acceder al módulo de informes.</p>;
-    }
-
     return (
         <div className="informe-modulo">
             <header className="encabezado">
@@ -255,180 +262,155 @@ const InformeModulo = () => {
                 <div className="barra-superior">
                     <nav>
                         <ul>
-                            <li><button onClick={() => navigate("/perfilUsuario")}>Volver perfil usuario</button></li>
+                            <li><button onClick={() => navigate("/perfilAdmin")}>Volver perfil administrador</button></li>
                             <li><button onClick={handleLogout}>Cerrar sesión</button></li>
                         </ul>
                     </nav>
                 </div>
             </header>
 
-            <main className="container informe-main">
-                <h1>Módulo de Informes de Inventario</h1>
-
-                {/* Sección de Informe Actual */}
-                <section className="reporte-actual">
-                    <h2>Informe de Inventario Actual</h2>
-                    <div className="control-group">
-                        <label htmlFor="filterStatus">Filtrar por Estado de Asignación:</label>
-                        <select
-                            id="filterStatus"
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                        >
-                            {assignmentStatusOptions.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
-                        <button onClick={fetchCurrentReport}>Aplicar Filtro</button>
-                    </div>
-
-                    {cargandoReporte ? (
-                        <p>Cargando informe actual...</p>
-                    ) : errorReporte ? (
-                        <p className="error-mensaje">{errorReporte}</p>
-                    ) : reportData.length === 0 ? (
-                        <p>No hay datos de inventario disponibles para el filtro seleccionado.</p>
-                    ) : (
-                        <>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>ID Inventario</th> {/* n_inventario */}
-                                        <th>Categoría</th> {/* clase */}
-                                        <th>Tipo</th> {/* tipo */}
-                                        <th>Marca</th> {/* marca */}
-                                        <th>Serial</th> {/* n_serie */}
-                                        <th>RAM</th> {/* ram */}
-                                        <th>Disco</th> {/* disco */}
-                                        <th>Procesador</th> {/* procesador */}
-                                        <th>Estado Asignación</th> {/* estado */}
-                                        <th>Asignado A</th>
-                                        <th>Fecha Asignación</th>
-                                        {/* No hay fecha de devolución directa para el item en sí */}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {reportData.map((item) => (
-                                        <tr key={`${item.categoria}-${item.id}`}>
-                                            <td>{item.id}</td>
-                                            <td>{item.categoria}</td>
-                                            <td>{item.tipo}</td>
-                                            <td>{item.marca}</td>
-                                            <td>{item.serial}</td>
-                                            <td>{item.ram || 'N/A'}</td>
-                                            <td>{item.disco || 'N/A'}</td>
-                                            <td>{item.procesador || 'N/A'}</td>
-                                            <td>{item.estadoAsignacion}</td>
-                                            <td>{item.asignadoA}</td>
-                                            <td>{item.fechaAsignacion ? new Date(item.fechaAsignacion).toLocaleString() : 'N/A'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <button className="btn-generar-excel" onClick={handleGenerateAndDownload}>
-                                Generar y Descargar Informe (Excel)
-                            </button>
-                        </>
-                    )}
-                </section>
-
-                {/* Sección de Informes Históricos */}
-                <section className="informes-historicos">
-                    <h2>Informes Históricos</h2>
-                    {cargandoHistorico ? (
-                        <p>Cargando informes históricos...</p>
-                    ) : errorHistorico ? (
-                        <p className="error-mensaje">{errorHistorico}</p>
-                    ) : historicalReports.length === 0 ? (
-                        <p>No hay informes históricos guardados aún.</p>
-                    ) : (
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID Informe</th>
-                                    <th>Fecha Generación</th>
-                                    <th>Generado Por</th>
-                                    <th>Filtro Aplicado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {historicalReports.map((report) => (
-                                    <tr key={report.id}>
-                                        <td>{report.id}</td>
-                                        <td>{new Date(report.fechaGeneracion).toLocaleString()}</td>
-                                        <td>{report.nombreUsuarioGenerador}</td>
-                                        <td>{report.estadoFiltro}</td>
-                                        <td>
-                                            <button
-                                                className="btn-accion btn-ver"
-                                                onClick={() => handleViewHistorical(report.id)}
-                                            >
-                                                Ver Informe
-                                            </button>
-                                            <button
-                                                className="btn-accion btn-descargar"
-                                                onClick={() => handleDownloadHistorical(report.id, `Informe_Historico_${report.id}`)}
-                                            >
-                                                Descargar Excel
-                                            </button>
-                                        </td>
-                                    </tr>
+            <main>
+                <h2>Generar Informes</h2>
+                {cargandoUsuario ? (
+                    <p>Cargando información del usuario...</p>
+                ) : (
+                    <>
+                        <div className="filtros-container">
+                            <label htmlFor="filterStatus">Filtrar por Estado:</label>
+                            <select
+                                id="filterStatus"
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                            >
+                                {assignmentStatusOptions.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
                                 ))}
-                            </tbody>
-                        </table>
-                    )}
-                </section>
-            </main>
+                            </select>
+                            <button onClick={fetchCurrentReport}>Actualizar Reporte</button>
+                        </div>
 
-            {/* Modal para ver informe histórico completo */}
-            {isHistoricalModalOpen && selectedHistoricalReportData && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3>Detalle del Informe Histórico</h3>
-                        <div className="report-detail-table-container">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>ID Inventario</th>
-                                        <th>Categoría</th>
-                                        <th>Tipo</th>
-                                        <th>Marca</th>
-                                        <th>Serial</th>
-                                        <th>RAM</th>
-                                        <th>Disco</th>
-                                        <th>Procesador</th>
-                                        <th>Estado Asignación</th>
-                                        <th>Asignado A</th>
-                                        <th>Fecha Asignación</th>
-                                        {/* No hay fecha de devolución directa para el item en sí en el histórico */}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {selectedHistoricalReportData.map((item) => (
-                                        <tr key={`${item.categoria}-${item.id}`}>
-                                            <td>{item.id}</td>
-                                            <td>{item.categoria}</td>
-                                            <td>{item.tipo}</td>
-                                            <td>{item.marca}</td>
-                                            <td>{item.serial}</td>
-                                            <td>{item.ram || 'N/A'}</td>
-                                            <td>{item.disco || 'N/A'}</td>
-                                            <td>{item.procesador || 'N/A'}</td>
-                                            <td>{item.estadoAsignacion}</td>
-                                            <td>{item.asignadoA}</td>
-                                            <td>{item.fechaAsignacion ? new Date(item.fechaAsignacion).toLocaleString() : 'N/A'}</td>
-                                        </tr>
+                        <div className="seccion-informe">
+                            <h3>Informe de Inventario Actual</h3>
+                            {cargandoReporte && <p>Cargando reporte...</p>}
+                            {errorReporte && <p className="error-mensaje">{errorReporte}</p>}
+                            {!cargandoReporte && !errorReporte && reportData.length === 0 && (
+                                <p>No hay datos disponibles para el informe actual con los filtros seleccionados.</p>
+                            )}
+                            {!cargandoReporte && reportData.length > 0 && (
+                                <>
+                                    <table className="tabla-reporte">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Categoría</th>
+                                                <th>Tipo</th>
+                                                <th>Marca</th>
+                                                <th>Serial</th>
+                                                <th>RAM</th>
+                                                <th>Disco</th>
+                                                <th>Procesador</th>
+                                                <th>Estado Asignación</th>
+                                                <th>Asignado A</th>
+                                                <th>Fecha Asignación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reportData.map((item) => (
+                                                <tr key={`${item.categoria}-${item.id}`}>
+                                                    <td>{item.id}</td>
+                                                    <td>{item.categoria}</td>
+                                                    <td>{item.tipo}</td>
+                                                    <td>{item.marca}</td>
+                                                    <td>{item.serial}</td>
+                                                    <td>{item.ram || 'N/A'}</td>
+                                                    <td>{item.disco || 'N/A'}</td>
+                                                    <td>{item.procesador || 'N/A'}</td>
+                                                    <td>{item.estadoAsignacion}</td>
+                                                    <td>{item.asignadoA}</td>
+                                                    <td>{item.fechaAsignacion ? new Date(item.fechaAsignacion).toLocaleString() : 'N/A'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <button onClick={handleGenerateAndDownload} className="btn-descargar">Generar y Descargar Excel</button>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="seccion-historico">
+                            <h3>Informes Históricos Guardados</h3>
+                            {cargandoHistorico && <p>Cargando informes históricos...</p>}
+                            {errorHistorico && <p className="error-mensaje">{errorHistorico}</p>}
+                            {!cargandoHistorico && historicalReports.length === 0 && (
+                                <p>No hay informes históricos guardados.</p>
+                            )}
+                            {!cargandoHistorico && historicalReports.length > 0 && (
+                                <ul className="lista-historicos">
+                                    {historicalReports.map(reporte => (
+                                        <li key={reporte.id}>
+                                            <p><strong>ID:</strong> {reporte.id}</p>
+                                            <p><strong>Fecha Guardado:</strong> {new Date(reporte.fechaGuardado).toLocaleString()}</p>
+                                            <p><strong>Estado de Filtro:</strong> {reporte.estadoFiltro}</p>
+                                            <div className="acciones-historico">
+                                                <button onClick={() => handleViewHistorical(reporte.id)}>Ver Reporte</button>
+                                                <button onClick={() => handleDownloadHistorical(reporte.id, `Informe_Historico_${reporte.id}`)}>Descargar Excel</button>
+                                            </div>
+                                        </li>
                                     ))}
-                                </tbody>
-                            </table>
+                                </ul>
+                            )}
                         </div>
-                        <div className="modal-actions">
-                            <button type="button" className="btn-cancelar" onClick={handleCloseHistoricalModal}>Cerrar</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
+                        {/* Modal para ver el informe histórico completo */}
+                        {isHistoricalModalOpen && selectedHistoricalReportData && (
+                            <div className="modal">
+                                <div className="modal-content">
+                                    <h3>Detalles del Informe Histórico</h3>
+                                    <div className="tabla-modal-wrapper">
+                                        <table className="tabla-modal">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Categoría</th>
+                                                    <th>Tipo</th>
+                                                    <th>Marca</th>
+                                                    <th>Serial</th>
+                                                    <th>RAM</th>
+                                                    <th>Disco</th>
+                                                    <th>Procesador</th>
+                                                    <th>Estado Asignación</th>
+                                                    <th>Asignado A</th>
+                                                    <th>Fecha Asignación</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {selectedHistoricalReportData.map((item) => (
+                                                    <tr key={`${item.categoria}-${item.id}`}>
+                                                        <td>{item.id}</td>
+                                                        <td>{item.categoria}</td>
+                                                        <td>{item.tipo}</td>
+                                                        <td>{item.marca}</td>
+                                                        <td>{item.serial}</td>
+                                                        <td>{item.ram || 'N/A'}</td>
+                                                        <td>{item.disco || 'N/A'}</td>
+                                                        <td>{item.procesador || 'N/A'}</td>
+                                                        <td>{item.estadoAsignacion}</td>
+                                                        <td>{item.asignadoA}</td>
+                                                        <td>{item.fechaAsignacion ? new Date(item.fechaAsignacion).toLocaleString() : 'N/A'}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="modal-actions">
+                                        <button type="button" className="btn-cancelar" onClick={handleCloseHistoricalModal}>Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </main>
         </div>
     );
 };

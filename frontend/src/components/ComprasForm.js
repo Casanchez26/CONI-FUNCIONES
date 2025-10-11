@@ -6,7 +6,7 @@ import logo from '../img/ESLOGAN CONI.png'; // Asegúrate de que la ruta a tu lo
 const ComprasForm = () => {
     const navigate = useNavigate();
 
-    // -- ESTADOS PARA LA INFORMACIÓN DEL USUARIO AUTENTICADO --
+    // --- ESTADOS PARA LA INFORMACIÓN DEL USUARIO AUTENTICADO ---
     const [currentUser, setCurrentUser] = useState(null);
 
     // --- ESTADOS PARA EL FORMULARIO DE COMPRAS ---
@@ -54,30 +54,41 @@ const ComprasForm = () => {
     const opcionesPerifericosEntrada = ["Mouse", "Teclado", "Webcam", "Micrófono", "Cargador", "Cable Corriente Alterna"];
     const opcionesPerifericosAlmacenamiento = ["Disco Duro Portátil", "USB",]
 
-    // -- EFECTO PARA OBTENER Y VERIFICAR EL USUARIO AUTENTICADO --
+    // --- EFECTO PARA OBTENER Y VERIFICAR EL USUARIO AUTENTICADO ---
     useEffect(() => {
         try {
-            const id = localStorage.getItem("idUsuario");
-            const rol = localStorage.getItem("rolUsuario");
-            const cargo = localStorage.getItem("cargoEmpleado");
+            // Buscamos el objeto de sesión completo guardado en el login
+            const storedUserJSON = localStorage.getItem("usuarioLogueado");
 
-            // Si el usuariono está autenticado, Redirigir
-            if (!id || !rol || !cargo) {
-                navigate ("/")
-                return
-            }
-
-            // Asignar los datos del usuario a un solo estado
-            setCurrentUser({ id, rol, cargo });
-
-            // Verificar el rol del usuario
-            if (rol !== 'usuario' && rol !== 'admin') {
+            if (!storedUserJSON) {
+                console.warn("ComprasForm: Sesión no encontrada. Redirigiendo a inicio.");
                 navigate("/");
                 return;
             }
+
+            const usuario = JSON.parse(storedUserJSON);
+            
+            // Usamos las propiedades del objeto JSON para verificar la sesión
+            const id = usuario.idUsuario || usuario.id; 
+            const rol = usuario.rolAutenticacion; 
+            const cargo = usuario.cargoEmpleado;
+            
+            if (!id || !rol || !cargo) {
+                console.warn("ComprasForm: Información de usuario incompleta. Redirigiendo a inicio.");
+                navigate("/");
+                return;
+            }
+            
+            setCurrentUser({ id, rol, cargo });
+
+            // Verificar el rol del usuario para acceso (Debe ser 'usuario' o 'admin')
+            if (rol !== 'usuario' && rol !== 'admin') {
+                console.warn(`ComprasForm: Rol (${rol}) sin permiso. Redirigiendo a login.`);
+                navigate("/login");
+            }
         } catch (e) {
-            console.error('Error al obtener datos del usuario desde localStorage:', e);
-            navigate("login/");
+            console.error("Error al obtener o parsear datos del usuario de localStorage:", e);
+            navigate("/login");
         }
     }, [navigate]);
 
@@ -131,14 +142,13 @@ const ComprasForm = () => {
     }, [sortBy, sortOrder, filterPriority, searchKeyword, currentUser?.id]); // Dependencias de useCallback
 
     // --- EFECTO PARA CARGAR LAS SOLICITUDES ---
-    // Se ejecutará cuando 'fetchSolicitudes' cambie (es decir, cuando cambien los parámetros de búsqueda/filtro)
-    // o cuando el componente se monte por primera vez.
+    // Se ejecutará cuando 'fetchSolicitudes' cambie
     useEffect(() => {
-        // Ejecutar fetchSolicitudes solo si el currentUserId ya está disponible
+        // Ejecutar fetchSolicitudes solo si el currentUser ya está disponible
         if (currentUser?.id) {
             fetchSolicitudes();
         }
-    }, [fetchSolicitudes, currentUser]); // Añadimos currentUserId como dependencia aquí
+    }, [fetchSolicitudes, currentUser]); // Añadimos currentUser como dependencia aquí
 
 
     // --- Manejador de cambio para la CLASE principal ---
@@ -264,20 +274,31 @@ const ComprasForm = () => {
             const data = await response.json();
 
             if (response.ok) {
-                alert(data.mensaje); // Usar alert temporalmente, considera un modal personalizado
+                // Alerta personalizada para reemplazar window.alert
+                const message = data.mensaje || 'Solicitud actualizada exitosamente.';
+                document.getElementById('custom-alert-message').textContent = message;
+                document.getElementById('custom-alert').style.display = 'block';
+
                 fetchSolicitudes();
                 setIsEditModalOpen(false);
             } else {
-                alert(`Error al actualizar: ${data.mensaje || 'Ocurrió un error desconocido.'}`);
+                const message = `Error al actualizar: ${data.mensaje || 'Ocurrió un error desconocido.'}`;
+                document.getElementById('custom-alert-message').textContent = message;
+                document.getElementById('custom-alert').style.display = 'block';
             }
         } catch (error) {
             console.error('Error al conectar con el backend (edición):', error);
-            alert('Error de conexión con el servidor al actualizar.');
+            const message = 'Error de conexión con el servidor al actualizar.';
+            document.getElementById('custom-alert-message').textContent = message;
+            document.getElementById('custom-alert').style.display = 'block';
         }
     };
 
     const handleDelete = async (solicitudId) => {
         setMensajeEdicion('');
+        
+        // Reemplazando window.confirm por un modal personalizado
+        // Nota: Mantenemos window.confirm por ahora, pero lo ideal es usar un modal personalizado.
         if (window.confirm('¿Estás seguro de que quieres eliminar esta solicitud?')) {
             const url = `http://localhost:8080/CONI1.0/api/solicitudes-compra/${solicitudId}`;
             try {
@@ -285,18 +306,22 @@ const ComprasForm = () => {
                     method: 'DELETE',
                     credentials: 'include'
                 });
-
                 const data = await response.json();
-
                 if (response.ok) {
-                    alert(data.mensaje);
+                    const message = data.mensaje || 'Solicitud eliminada exitosamente.';
+                    document.getElementById('custom-alert-message').textContent = message;
+                    document.getElementById('custom-alert').style.display = 'block';
                     fetchSolicitudes();
                 } else {
-                    alert(`Error al eliminar: ${data.mensaje || 'Ocurrió un error desconocido.'}`);
+                    const message = `Error al eliminar: ${data.mensaje || 'Ocurrió un error desconocido.'}`;
+                    document.getElementById('custom-alert-message').textContent = message;
+                    document.getElementById('custom-alert').style.display = 'block';
                 }
             } catch (error) {
                 console.error('Error al conectar con el backend (eliminación):', error);
-                alert('Error de conexión con el servidor al eliminar.');
+                const message = 'Error de conexión con el servidor al eliminar.';
+                document.getElementById('custom-alert-message').textContent = message;
+                document.getElementById('custom-alert').style.display = 'block';
             }
         }
     };
@@ -304,12 +329,7 @@ const ComprasForm = () => {
     const handleCloseEditModal = () => {
         setIsEditModalOpen(false);
         setSolicitudToEdit(null);
-        setEditFormData({
-            tipoSolicitud: '',
-            descripcion: '',
-            altaPrioridad: false,
-            estado: ''
-        });
+        setEditFormData({ tipoSolicitud: '', descripcion: '', altaPrioridad: false, estado: '' });
         setMensajeEdicion('');
     };
 
@@ -320,8 +340,8 @@ const ComprasForm = () => {
                 method: "GET",
                 credentials: "include"
             });
-
             if (response.ok) {
+                // Limpiamos todo el localStorage, incluyendo el objeto JSON completo
                 localStorage.removeItem("usuarioLogueado");
                 localStorage.removeItem("rol");
                 localStorage.removeItem("idUsuario");
@@ -336,12 +356,11 @@ const ComprasForm = () => {
             console.error("Error al cerrar sesión", error);
         }
     };
-
+    
     //Helper para determinar si las opciones de equipo deben estar visibles/habilitadas
     const showEquipoOptions = claseSeleccionada === "Equipo" || claseSeleccionada === "Equipo/Periferico";
     //Helper para determinar si las opciones de periférico deben estar visibles/habilitadas
     const showPerifericoOptions = claseSeleccionada === "Periferico" || claseSeleccionada === "Equipo/Periferico";
-
 
     return (
         <div className="compras-modulo">
@@ -357,373 +376,246 @@ const ComprasForm = () => {
                         </nav>
                     </div>
                 </div>
-
                 <div className="container-textos">
-                    <p>
-                        Para realizar la solicitud, por favor complete todos los datos requeridos sobre el equipo o
-                        periférico necesario.
-                    </p>
+                    <p> Para realizar la solicitud, por favor complete todos los datos requeridos sobre el equipo o periférico necesario. </p>
                 </div>
-
                 <div className="container desplegable-compras">
                     <form id="formularioCompras" onSubmit={handleSubmit}>
                         {/*SELECT PRINCIPAL: CLASE*/}
                         <div className="seleccion">
                             <label htmlFor="claseSolicitud">Clase de Solicitud</label>
                         </div>
-                        <select
-                            name="clase"
-                            id="claseSolicitud"
-                            value={claseSeleccionada}
-                            onChange={handleClaseChange}
-                        >
-                            <option value="">---Seleccione una clase---</option>
+                        <select name="clase" id="claseSolicitud" value={claseSeleccionada} onChange={handleClaseChange}>
+                            <option value="">Seleccione una opción</option>
                             <option value="Equipo">Equipo</option>
                             <option value="Periferico">Periférico</option>
-                            <option value="Equipo/Periferico">Equipo/Periferico</option>
+                            <option value="Equipo/Periferico">Equipo y Periférico</option>
                         </select>
-
-                        {/*OPCIONES PARA CLASE "EQUIPO" O "EQUIPO/PERIFÉRICO"*/}
-                        {(showEquipoOptions) && (
+                        <br /><br />
+                        {/* INPUT PARA DESCRIPCIÓN */}
+                        <label htmlFor="descripcion">Descripción</label>
+                        <textarea
+                            id="descripcion"
+                            name="descripcion"
+                            value={descripcion}
+                            onChange={(e) => setDescripcion(e.target.value)}
+                        />
+                        <br /><br />
+                        {/* CHECKBOX DE PRIORIDAD */}
+                        <div className="checkbox-container">
+                            <input
+                                type="checkbox"
+                                id="altaPrioridad"
+                                name="altaPrioridad"
+                                checked={altaPrioridad}
+                                onChange={(e) => setAltaPrioridad(e.target.checked)}
+                            />
+                            <label htmlFor="altaPrioridad">Alta Prioridad</label>
+                        </div>
+                        <br />
+                        {/* CONTROLES CONDICIONALES PARA EQUIPOS */}
+                        {showEquipoOptions && (
                             <>
-                                <div className="seleccion">
-                                    <label htmlFor="tipoEquipo">Tipo Equipo</label>
-                                </div>
+                                <label>Tipo de Equipo:</label>
                                 <select
                                     name="tipoEquipo"
-                                    id="tipoEquipo"
                                     value={tipoEquipoSeleccionado}
-                                    onChange={(e) => setTipoEquipoSeleccionado(e.target.value)}>
-
-                                    <option value="">---Seleccione un Tipo---</option>
-                                    <option value="CPU">CPU</option>
+                                    onChange={(e) => setTipoEquipoSeleccionado(e.target.value)}
+                                >
+                                    <option value="">Seleccione tipo de equipo</option>
+                                    <option value="Computadora de escritorio">Computadora de escritorio</option>
                                     <option value="Laptop">Laptop</option>
                                     <option value="Tablet">Tablet</option>
-                                    <option value="TodoEnUno">Todo en Uno</option>
                                 </select>
+                                <br /><br />
 
-                                {/*Características del Equipo (visibles solo si hay tipo de equipo seleccionado)*/}
-                                {tipoEquipoSeleccionado && (
+                                <label>Almacenamiento:</label>
+                                <select
+                                    name="almacenamiento"
+                                    value={almacenamientoSeleccionado}
+                                    onChange={(e) => setAlmacenamientoSeleccionado(e.target.value)}
+                                >
+                                    <option value="">Seleccione Almacenamiento</option>
+                                    {opcionesAlmacenamiento.map(opcion => (
+                                        <option key={opcion} value={opcion}>{opcion}</option>
+                                    ))}
+                                </select>
+                                <br /><br />
+
+                                <label>RAM:</label>
+                                <select
+                                    name="ram"
+                                    value={ramSeleccionada}
+                                    onChange={(e) => setRamSeleccionada(e.target.value)}
+                                >
+                                    <option value="">Seleccione RAM</option>
+                                    {opcionesRAM.map(opcion => (
+                                        <option key={opcion} value={opcion}>{opcion}</option>
+                                    ))}
+                                </select>
+                                <br /><br />
+
+                                <label>Procesador:</label>
+                                <select
+                                    name="procesador"
+                                    value={procesadorSeleccionado}
+                                    onChange={(e) => setProcesadorSeleccionado(e.target.value)}
+                                >
+                                    <option value="">Seleccione procesador</option>
+                                    {opcionesProcesador.map(opcion => (
+                                        <option key={opcion} value={opcion}>{opcion}</option>
+                                    ))}
+                                </select>
+                                <br /><br />
+                            </>
+                        )}
+                        {/* CONTROLES CONDICIONALES PARA PERIFÉRICOS */}
+                        {showPerifericoOptions && (
+                            <>
+                                <label>Tipo de Periférico:</label>
+                                <select
+                                    name="tipoPeriferico"
+                                    value={tipoPerifericoSeleccionado}
+                                    onChange={(e) => setTipoPerifericoSeleccionado(e.target.value)}
+                                >
+                                    <option value="">Seleccione tipo de periférico</option>
+                                    <option value="Entrada">Entrada</option>
+                                    <option value="Salida">Salida</option>
+                                    <option value="Almacenamiento">Almacenamiento</option>
+                                </select>
+                                <br /><br />
+                                {tipoPerifericoSeleccionado && (
                                     <>
-                                        <div className="Seleccion">
-                                            <label htmlFor="almacenamiento">Almacenamiento</label>
-                                        </div>
-
+                                        <label>Periférico Específico:</label>
                                         <select
-                                            name="almacenamiento"
-                                            id="almacenamiento"
-                                            value={almacenamientoSeleccionado}
-                                            onChange={(e) => setAlmacenamientoSeleccionado(e.target.value)}>
-
-                                            <option value="">---Selecciona Almacenamiento---</option>
-                                            {opcionesAlmacenamiento.map(op => <option key={op} value={op}>{op}</option>)}
+                                            name="perifericoEspecifico"
+                                            value={perifericoEspecificoSeleccionado}
+                                            onChange={(e) => setPerifericoEspecificoSeleccionado(e.target.value)}
+                                        >
+                                            <option value="">Seleccione periférico</option>
+                                            {tipoPerifericoSeleccionado === "Salida" && opcionesPerifericosSalida.map(opcion => (
+                                                <option key={opcion} value={opcion}>{opcion}</option>
+                                            ))}
+                                            {tipoPerifericoSeleccionado === "Entrada" && opcionesPerifericosEntrada.map(opcion => (
+                                                <option key={opcion} value={opcion}>{opcion}</option>
+                                            ))}
+                                            {tipoPerifericoSeleccionado === "Almacenamiento" && opcionesPerifericosAlmacenamiento.map(opcion => (
+                                                <option key={opcion} value={opcion}>{opcion}</option>
+                                            ))}
                                         </select>
-
-                                        <div className="seleccion">
-                                            <label htmlFor="ram">RAM</label>
-                                        </div>
-                                        <select
-                                            name="ram"
-                                            id="ram"
-                                            value={ramSeleccionada}
-                                            onChange={(e) => setRamSeleccionada(e.target.value)}>
-
-                                            <option value="">---Seleccione RAM---</option>
-                                            {opcionesRAM.map(op => <option key={op} value={op}>{op}</option>)}
-                                        </select>
-
-                                        <div className="seleccion">
-                                            <label htmlFor="procesador">Procesador</label>
-                                        </div>
-                                        <select
-                                            name="procesador"
-                                            id="procesador"
-                                            value={procesadorSeleccionado}
-                                            onChange={(e) => setProcesadorSeleccionado(e.target.value)}>
-                                            <option value="">---Seleccione Procesador---</option>
-                                            {opcionesProcesador.map(op => <option key={op} value={op}>{op}</option>)}
-                                        </select>
+                                        <br /><br />
                                     </>
                                 )}
                             </>
                         )}
-                        {/* OPCIONES PARA CLASE "PERIFERICO" o "EQUIPO/PERIFERICO" */}
-                        {(showPerifericoOptions) && (
-                            <>
-                                <div className="seleccion" style={{ marginTop: '15px' }}>
-                                    <label htmlFor="tipoPeriferico">Tipo de Periférico</label>
-                                </div>
-                                <select
-                                    name="tipoPeriferico"
-                                    id="tipoPeriferico"
-                                    value={tipoPerifericoSeleccionado}
-                                    onChange={(e) => setTipoPerifericoSeleccionado(e.target.value)}
-                                >
-                                    <option value="">---Seleccione un Tipo---</option>
-                                    <option value="salida">Periférico de Salida</option>
-                                    <option value="entrada">Periférico de Entrada</option>
-                                    <option value="almacenamiento">Periférico de Almacenamiento</option>
-                                </select>
-                                {/* Periférico Específico (visible solo si hay tipo de periférico seleccionado) */}
-                                {tipoPerifericoSeleccionado && (
-                                    <div className="seleccion" style={{ marginTop: '15px' }}>
-                                        <select
-                                            name="perifericoEspecifico"
-                                            id="perifericoEspecifico"
-                                            value={perifericoEspecificoSeleccionado}
-                                            onChange={(e) => setPerifericoEspecificoSeleccionado(e.target.value)}
-                                        >
-                                            <option value="">---Seleccione Específico---</option>
-                                            {tipoPerifericoSeleccionado === "salida" &&
-                                                opcionesPerifericosSalida.map(op => <option key={op} value={op}>{op}</option>)}
-                                            {tipoPerifericoSeleccionado === "entrada" &&
-                                                opcionesPerifericosEntrada.map(op => <option key={op} value={op}>{op}</option>)}
-                                            {tipoPerifericoSeleccionado === "almacenamiento" &&
-                                                opcionesPerifericosAlmacenamiento.map(op => <option key={op} value={op}>{op}</option>)}
-                                        </select>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* Campo de Descripción (siempre visible) */}
-                        <div className="container descripcion">
-                            <textarea
-                                name="descripcion"
-                                id="texto-descripcion"
-                                placeholder="Describa el producto a solicitar (detalles adicionales)"
-                                value={descripcion}
-                                onChange={(e) => setDescripcion(e.target.value)}
-                            ></textarea>
-                        </div>
-                        <div className="checkbox">
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    id="prioridad"
-                                    checked={altaPrioridad}
-                                    onChange={(e) => setAltaPrioridad(e.target.checked)}
-                                /> Alta prioridad
-                            </label><br />
-                        </div>
-                        <button type="submit">Enviar solicitud</button>
+                        <button type="submit" className="btn-enviar">Enviar Solicitud</button>
                     </form>
-
                     {mensajeFormulario && <p className="mensaje-formulario">{mensajeFormulario}</p>}
                 </div>
-            </main>
-
-            <section className="container listado-solicitudes">
-                <h2>Solicitudes Enviadas</h2>
-                {/* Controles de ordenamiento y filtrado */}
-                <div className="container filtros-ordenamiento">
-                    <h3>Opciones de Visualización</h3>
-                    <div className="control-group">
-                        <label htmlFor="sortBy">Ordenar por:</label>
-                        <select
-                            id="sortBy"
-                            value={sortBy}
-                            onChange={(e) => {
-                                setSortBy(e.target.value);
-                                // El cambio en 'sortBy' hará que 'fetchSolicitudes' se re-cree y el useEffect se dispare.
-                            }}
-                        >
-                            <option value="fecha">Fecha</option>
-                            <option value="estado">Estado</option>
-                            <option value="prioridad">Prioridad</option>
-                            <option value="tipo">Clase</option>
-                        </select>
-
-                        <label htmlFor="sortOrder">Orden:</label>
-                        <select
-                            id="sortOrder"
-                            value={sortOrder}
-                            onChange={(e) => {
-                                setSortOrder(e.target.value);
-                                // El cambio en 'sortOrder' hará que 'fetchSolicitudes' se re-cree y el useEffect se dispare.
-                            }}
-                        >
-                            <option value="desc">Descendente</option>
-                            <option value="asc">Ascendente</option>
-                        </select>
-                    </div>
-
-                    <div className="control-group">
-                        <label htmlFor="filterPriority">Filtrar por Prioridad:</label>
-                        <select
-                            id="filterPriority"
-                            value={filterPriority}
-                            onChange={(e) => {
-                                setFilterPriority(e.target.value);
-                                // El cambio en 'filterPriority' hará que 'fetchSolicitudes' se re-cree y el useEffect se dispare.
-                            }}
-                        >
-                            <option value="all">Todas</option>
-                            <option value="true">Solo Alta Prioridad</option>
-                            <option value="false">Solo Baja Prioridad</option>
-                        </select>
-                    </div>
-
-                    <div className="control-group search-bar">
-                        <label htmlFor="searchKeyword">Buscar:</label>
-                        <input
-                            type="text"
-                            id="searchKeyword"
-                            placeholder="Buscar por descripción o clase"
-                            value={searchKeyword}
-                            onChange={(e) => setSearchKeyword(e.target.value)}
-                        />
-                        {/* El botón de búsqueda llama directamente a fetchSolicitudes,
-                            lo cual es útil si quieres que la búsqueda se active solo con un click,
-                            en lugar de cada vez que se teclea una letra.
-                        */}
-                        <button onClick={fetchSolicitudes}>Aplicar Búsqueda</button>
-                        {searchKeyword && (
-                            <button onClick={() => {
-                                setSearchKeyword('');
-                                fetchSolicitudes(); // Limpiar el campo y recargar el listado
-                            }}>X</button>
-                        )}
-                    </div>
-                </div>
-                {/* Fin de Controles de ordenamiento y filtrado */}
-
-                {/* Condición de carga y renderizado: Ahora solo muestra "Cargando" si no hay ID de usuario al inicio,
-                    o si fetchSolicitudes está en curso. */}
-                {currentUserId === null ? (
-                    <p>Por favor, inicie sesión para ver las solicitudes.</p>
-                ) : cargandoSolicitudes ? (
-                    <p>Cargando solicitudes...</p>
-                ) : errorListado ? (
-                    <p className="error-mensaje">{errorListado}</p>
-                ) : solicitudes.length === 0 ? (
-                    <p>No hay solicitudes enviadas aún.</p>
-                ) : (
-                    <table className="tabla-solicitudes">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Clase</th>
-                                <th className="descripcion-column">Descripción</th>
-                                <th>Prioridad</th>
-                                <th>Fecha</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {solicitudes.map((solicitud) => (
-                                <tr key={solicitud.id}>
-                                    <td>{solicitud.id}</td>
-                                    <td>{solicitud.tipoSolicitud}</td>
-                                    <td>{solicitud.descripcion}</td>
-                                    <td>{solicitud.altaPrioridad ? 'Sí' : 'No'}</td>
-                                    <td>{new Date(solicitud.fechaSolicitud).toLocaleString()}</td>
-                                    <td>{solicitud.estado}</td>
-                                    <td>
-                                        {/* Botón Editar */}
-                                        {(solicitud.estado === 'Pendiente' && solicitud.idUsuario === currentUserId) && (
-                                            <button
-                                                className="btn-accion btn-editar"
-                                                onClick={() => handleEdit(solicitud)}
-                                            >
-                                                Editar
-                                            </button>
-                                        )}
-                                        {/* Botón Eliminar */}
-                                        {(solicitud.estado === 'Pendiente' && solicitud.idUsuario === currentUserId) && (
-                                            <button
-                                                className="btn-accion btn-eliminar"
-                                                onClick={() => handleDelete(solicitud.id)}
-                                            >
-                                                Eliminar
-                                            </button>
-                                        )}
-                                        {/* Botón para cambiar estado (solo para rol "Usuario" y cargo "Otro") */}
-                                        {currentUserRol === "usuario" && currentUserCargo === "Otro" && (
-                                            <button
-                                                className="btn-accion btn-cambiar-estado"
-                                                onClick={() => handleEdit(solicitud)}
-                                            >
-                                                Cambiar Estado
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </section>
-
-            {/* Modal de Edición */}
-            {isEditModalOpen && solicitudToEdit && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
-                        <h3>Editar Solicitud #{solicitudToEdit.id}</h3>
-                        <form onSubmit={handleEditSubmit}>
-                            {/* Campos editables para el propietario */}
-                            {solicitudToEdit.idUsuario === currentUserId && (
-                                <>
-                                    <label>Clase de Solicitud:</label>
-                                    <select
-                                        name="tipoSolicitud"
-                                        value={editFormData.tipoSolicitud}
-                                        onChange={handleEditFormChange}
-                                        disabled={solicitudToEdit.estado !== 'Pendiente'}
-                                    >
-                                        <option value="Equipo">Equipo</option>
-                                        <option value="Periferico">Periférico</option>
-                                        <option value="Equipo/Periferico">Equipo/Periferico</option>
-                                    </select>
-
-                                    <label>Descripción:</label>
-                                    <textarea
-                                        name="descripcion"
-                                        value={editFormData.descripcion}
-                                        onChange={handleEditFormChange}
-                                        disabled={solicitudToEdit.estado !== 'Pendiente'}
-                                    ></textarea>
-
-                                    <label>
-                                        <input
-                                            type="checkbox"
-                                            name="altaPrioridad"
-                                            checked={editFormData.altaPrioridad}
+                {/* MODAL DE EDICIÓN */}
+                {isEditModalOpen && (
+                    <div className="modal">
+                        <div className="modal-content">
+                            <h3>Editar Solicitud</h3>
+                            <form onSubmit={handleEditSubmit}>
+                                <label>Tipo de Solicitud:</label>
+                                <input
+                                    type="text"
+                                    name="tipoSolicitud"
+                                    value={editFormData.tipoSolicitud}
+                                    onChange={handleEditFormChange}
+                                />
+                                <br />
+                                <label>Descripción:</label>
+                                <textarea
+                                    name="descripcion"
+                                    value={editFormData.descripcion}
+                                    onChange={handleEditFormChange}
+                                />
+                                <br />
+                                <label>Prioridad:</label>
+                                <input
+                                    type="checkbox"
+                                    name="altaPrioridad"
+                                    checked={editFormData.altaPrioridad}
+                                    onChange={handleEditFormChange}
+                                />
+                                <br />
+                                {/* Campos de edición para rol "Otro" */}
+                                {currentUser?.rol === "usuario" && currentUser?.cargo === "Otro" && (
+                                    <>
+                                        <label>Estado:</label>
+                                        <select
+                                            name="estado"
+                                            value={editFormData.estado}
                                             onChange={handleEditFormChange}
-                                            disabled={solicitudToEdit.estado !== 'Pendiente'}
-                                        /> Alta Prioridad
-                                    </label>
-                                </>
-                            )}
-
-                            {/* Campo de Estado (solo para rol "Usuario" y cargo "Otro") */}
-                            {currentUserRol === "usuario" && currentUserCargo === "Otro" && (
-                                <>
-                                    <label>Estado:</label>
-                                    <select
-                                        name="estado"
-                                        value={editFormData.estado}
-                                        onChange={handleEditFormChange}
-                                    >
-                                        <option value="Pendiente">Pendiente</option>
-                                        <option value="Aprobada">Aprobada</option>
-                                        <option value="Rechazada">Rechazada</option>
-                                        <option value="Completada">Completada</option>
-                                    </select>
-                                </>
-                            )}
-
-                            {mensajeEdicion && <p className="mensaje-edicion">{mensajeEdicion}</p>}
-                            <div className="modal-actions">
-                                <button type="submit" className="btn-guardar">Guardar Cambios</button>
-                                <button type="button" className="btn-cancelar" onClick={handleCloseEditModal}>Cancelar</button>
-                            </div>
-                        </form>
+                                        >
+                                            <option value="Pendiente">Pendiente</option>
+                                            <option value="Aprobada">Aprobada</option>
+                                            <option value="Rechazada">Rechazada</option>
+                                            <option value="Completada">Completada</option>
+                                        </select>
+                                    </>
+                                )}
+                                {mensajeEdicion && <p className="mensaje-edicion">{mensajeEdicion}</p>}
+                                <div className="modal-actions">
+                                    <button type="submit" className="btn-guardar">Guardar Cambios</button>
+                                    <button type="button" className="btn-cancelar" onClick={handleCloseEditModal}>Cancelar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+                {/* TABLA DE SOLICITUDES */}
+                <div className="listado-solicitudes">
+                    <h3>Listado de Solicitudes</h3>
+                    {cargandoSolicitudes && <p>Cargando solicitudes...</p>}
+                    {errorListado && <p className="error-mensaje">{errorListado}</p>}
+                    {!cargandoSolicitudes && !errorListado && solicitudes.length === 0 && (
+                        <p>No hay solicitudes disponibles.</p>
+                    )}
+                    {!cargandoSolicitudes && solicitudes.length > 0 && (
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tipo</th>
+                                    <th>Descripción</th>
+                                    <th>Prioridad</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {solicitudes.map(solicitud => (
+                                    <tr key={solicitud.id}>
+                                        <td>{solicitud.id}</td>
+                                        <td>{solicitud.tipoSolicitud}</td>
+                                        <td>{solicitud.descripcion}</td>
+                                        <td>{solicitud.altaPrioridad ? "Sí" : "No"}</td>
+                                        <td>{solicitud.estado}</td>
+                                        <td>{new Date(solicitud.fechaSolicitud).toLocaleString()}</td>
+                                        <td>
+                                            <button onClick={() => handleEdit(solicitud)}>Editar</button>
+                                            <button onClick={() => handleDelete(solicitud.id)}>Eliminar</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+                {/* Contenedor para el mensaje de alerta personalizado (usado en edición/eliminación) */}
+                <div id="custom-alert" className="modal-custom-alert" style={{display: 'none'}}>
+                    <div className="modal-content-alert">
+                        <p id="custom-alert-message"></p>
+                        <button onClick={() => document.getElementById('custom-alert').style.display = 'none'}>Aceptar</button>
                     </div>
                 </div>
-            )}
+            </main>
         </div>
     );
 };
+
 export default ComprasForm;

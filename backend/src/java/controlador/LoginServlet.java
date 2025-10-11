@@ -1,7 +1,7 @@
 package controlador;
 
 import dao.UsuarioDAO;
-import modelo.Usuario; // Asegúrate de que esta importación sea correcta para tu clase Usuario
+import modelo.Usuario;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -15,10 +15,11 @@ import org.json.JSONObject;
 @WebServlet("/LoginServlet")
 public class LoginServlet extends HttpServlet {
 
-    @Override
+    @Override // @Override es una anotación que indica que este método está sobrescribiendo un método de la clase padre (HttpServlet).
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        // Configuramos la respuesta para que sea en formato JSON y use la codificación UTF-8.
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
 
@@ -26,6 +27,8 @@ public class LoginServlet extends HttpServlet {
         JSONObject jsonResponse = new JSONObject();
 
         try {
+            // Leemos el cuerpo de la solicitud (Request Body)
+            // StringBuilder es una clase que nos ayuda a construir strings de forma eficiente.
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = request.getReader().readLine()) != null) {
@@ -34,25 +37,37 @@ public class LoginServlet extends HttpServlet {
             String jsonString = sb.toString();
             JSONObject jsonRequest = new JSONObject(jsonString);
 
+            // --- CAMBIO CLAVE 1: Solo extraemos el username y password ---
             String username = jsonRequest.getString("username");
             String password = jsonRequest.getString("password");
-            String rolSeleccionado = jsonRequest.getString("rol");
 
+            // DAO (Data Access Object) es un patrón de diseño.
+            // Es una clase que se encarga de todo lo relacionado con la base de datos,
+            // como buscar, guardar o actualizar información.
             UsuarioDAO dao = new UsuarioDAO();
+            // Llamamos al método `validar` de tu DAO para verificar las credenciales.
             Usuario usuario = dao.validar(username, password);
 
-// Validar que el usuario existe y que el rol de autenticación coincide con lo que seleccionó en el frontend
-            if (usuario != null && usuario.getRol().equals(rolSeleccionado)) {
+            // --- CAMBIO CLAVE 2: Validamos solo la existencia del usuario ---
+            // La condición ahora solo verifica si el objeto 'usuario' no es nulo.
+            // Esto significa que se encontró un usuario con esas credenciales.
+            if (usuario != null) {
+                
+                // Si el usuario existe, creamos una sesión para mantenerlo autenticado.
+                // HttpSession es una clase para manejar sesiones de usuario.
                 HttpSession session = request.getSession(true);
                 session.setAttribute("idUsuario", usuario.getId());
-                session.setAttribute("rolAutenticacion", usuario.getRol()); // Aquí cambió de rol a rolAutenticación
-                session.setAttribute("cargoEmpleado", usuario.getCargoEmpleado()); // Aquí se defin el cargo del epleado encontrado
+                
+                // Obtenemos el rol del usuario encontrado en la base de datos
+                session.setAttribute("rolAutenticacion", usuario.getRol());
+                session.setAttribute("cargoEmpleado", usuario.getCargoEmpleado()); // Aquí se define el cargo del empleado encontrado
                 session.setAttribute("username", usuario.getUsername());
 
+                // Preparamos la respuesta JSON para el frontend
                 jsonResponse.put("success", true);
                 jsonResponse.put("message", "Login exitoso");
                 
-                //Enviar la información del usuario al frontend
+                // Creamos un objeto JSON con los datos del usuario para enviarlo al frontend
                 JSONObject userData = new JSONObject();
                 userData.put("id", usuario.getId());
                 userData.put("rolAutenticacion", usuario.getRol()); // Rol de la tabla usuario
@@ -62,10 +77,15 @@ public class LoginServlet extends HttpServlet {
 
                 response.setStatus(HttpServletResponse.SC_OK);
             } else {
+                // Si no se encontró el usuario, enviamos una respuesta de error.
                 jsonResponse.put("success", false);
                 jsonResponse.put("message", "Usuario, contraseña o rol incorrectos.");
+                // SC_UNAUTHORIZED (401) es el código HTTP para "no autorizado".
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
+            
+        // Manejo de errores
+        // org.json.JSONException: Error si el JSON de la solicitud es incorrecto
         } catch (org.json.JSONException e) {
             jsonResponse.put("success", false);
             jsonResponse.put("message", "Formato de solicitud JSON inválido o campos faltantes.");
@@ -76,9 +96,13 @@ public class LoginServlet extends HttpServlet {
             jsonResponse.put("success", false);
             jsonResponse.put("message", "Error interno del servidor: " + e.getMessage());
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            //Esto imprime la traza de la pila del error en la consola del servidor (no en el navegador). 
+            //La traza de la pila es una lista detallada de dónde y por qué se produjo el error. 
+            //Es una herramienta indispensable para que tú, como desarrollador, puedas diagnosticar y solucionar el problema.
             e.printStackTrace();
 
         } finally {
+            // Finalmente, enviamos la respuesta JSON al frontend y cerramos el flujo de salida.
             out.print(jsonResponse.toString());
             out.flush();
         }
