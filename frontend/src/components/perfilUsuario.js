@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../img/ESLOGAN CONI.png';
 import './estilos.css';
@@ -11,40 +11,38 @@ import genearInformeGif from '../img/generar informe.gif';
 
 const PerfilUsuario = () => {
   const navigate = useNavigate();
+  const [usuarioLogueadoData, setUsuarioLogueadoData] = useState(null);
 
     useEffect(() => {
-      const usuario = localStorage.getItem("usuarioLogueado");
-      const rol = localStorage.getItem("rol");
+      try {
+        const storedUserJSON = localStorage.getItem("usuarioLogueado");
+        if (storedUserJSON) {
+          const parsedUser = JSON.parse(storedUserJSON);
+          setUsuarioLogueadoData(parsedUser);
 
-      if (!usuario || rol !== "usuario") {
+          if (parsedUser?.rolAutenticacion !== "usuario") {
+            console.log("perfilUsuario: Rol incorrecto, redirigiendo a login.");
+            navigate("/login");
+          }
+        } else {
+          console.log("PerfilUsuario: No hay datos de sesión, redirigiendo a login.");
+          navigate("/login");
+        }
+      } catch (e) {
+        console.error("Error al leer datos del usuario de localStorage", e);
         navigate("/login");
       }
     }, [navigate]);
 
-    const handleLogout = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/CONI1.0/LogoutServlet", {
-        method: "GET",
-        credentials: "include"
-      });
+    const handleLogout = () => {
+      localStorage.removeItem("usuarioLogueado");
+      localStorage.setItem("logoutMessage", "Sesión cerrada exitosamente");
+      navigate("/login");
+    };
 
-      if (response.ok) {
-        localStorage.removeItem("usuarioLogueado");
-        localStorage.removeItem("rol");
-        sessionStorage.clear(); // Limpia sessionStorage si es necesario
-
-        // Guarda un mensaje de cierre de sesión exitoso
-        localStorage.setItem("logoutMessage", "Sesión cerrada exitosamente");
-        window.location.href = "/";
-      } else {
-        console.error("Error al cerrar sesión, status:", response.status);
-        alert("Error al cerrar sesión. Por favor, inténtalo de nuevo.");
-      }
-    } catch (error) {
-      console.error("Error al cerrar sesión", error);
-      alert("Error de red al cerrar sesión. Por favor, verifica tu conexión.");
+    if (!usuarioLogueadoData) {
+      return <div>Cargando perfil...</div>;
     }
-  };
 
   return(
     <div>

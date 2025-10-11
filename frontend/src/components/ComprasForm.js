@@ -6,6 +6,9 @@ import logo from '../img/ESLOGAN CONI.png'; // Asegúrate de que la ruta a tu lo
 const ComprasForm = () => {
     const navigate = useNavigate();
 
+    // -- ESTADOS PARA LA INFORMACIÓN DEL USUARIO AUTENTICADO --
+    const [currentUser, setCurrentUser] = useState(null);
+
     // --- ESTADOS PARA EL FORMULARIO DE COMPRAS ---
     const [descripcion, setDescripcion] = useState('');
     const [altaPrioridad, setAltaPrioridad] = useState(false);
@@ -31,15 +34,6 @@ const ComprasForm = () => {
     const [filterPriority, setFilterPriority] = useState('all'); // Por defecto, no filtrar por prioridad
     const [searchKeyword, setSearchKeyword] = useState(''); // Estado para la palabra clave de búsqueda
 
-    // --- ESTADOS PARA INFORMACIÓN DEL USUARIO AUTENTICADO ---
-    // Inicializamos los estados directamente desde localStorage
-    const [currentUserId, setCurrentUserId] = useState(() => {
-        const id = localStorage.getItem("idUsuario");
-        return id ? parseInt(id, 10) : null; // Convertir a número
-    });
-    const [currentUserRol, setCurrentUserRol] = useState(localStorage.getItem("rol"));
-    const [currentUserCargo, setCurrentUserCargo] = useState(localStorage.getItem("cargoEmpleado"));
-
     // --- ESTADOS PARA LA EDICIÓN DE SOLICITUDES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [solicitudToEdit, setSolicitudToEdit] = useState(null);
@@ -60,13 +54,40 @@ const ComprasForm = () => {
     const opcionesPerifericosEntrada = ["Mouse", "Teclado", "Webcam", "Micrófono", "Cargador", "Cable Corriente Alterna"];
     const opcionesPerifericosAlmacenamiento = ["Disco Duro Portátil", "USB",]
 
+    // -- EFECTO PARA OBTENER Y VERIFICAR EL USUARIO AUTENTICADO --
+    useEffect(() => {
+        try {
+            const id = localStorage.getItem("idUsuario");
+            const rol = localStorage.getItem("rolUsuario");
+            const cargo = localStorage.getItem("cargoEmpleado");
+
+            // Si el usuariono está autenticado, Redirigir
+            if (!id || !rol || !cargo) {
+                navigate ("/")
+                return
+            }
+
+            // Asignar los datos del usuario a un solo estado
+            setCurrentUser({ id, rol, cargo });
+
+            // Verificar el rol del usuario
+            if (rol !== 'usuario' && rol !== 'admin') {
+                navigate("/");
+                return;
+            }
+        } catch (e) {
+            console.error('Error al obtener datos del usuario desde localStorage:', e);
+            navigate("login/");
+        }
+    }, [navigate]);
+
     // --- FUNCIÓN MEMORIZADA PARA CARGAR EL LISTADO DE SOLICITUDES ---
     const fetchSolicitudes = useCallback(async () => {
         setCargandoSolicitudes(true);
         setErrorListado('');
 
         // Solo intentar cargar solicitudes si tenemos un ID de usuario
-        if (!currentUserId) {
+        if (!currentUser?.id) {
             setErrorListado("No se pudo cargar el listado de solicitudes. Usuario no autenticado.");
             setCargandoSolicitudes(false);
             return;
@@ -107,17 +128,17 @@ const ComprasForm = () => {
         } finally {
             setCargandoSolicitudes(false);
         }
-    }, [sortBy, sortOrder, filterPriority, searchKeyword, currentUserId, setCargandoSolicitudes, setErrorListado, setSolicitudes]); // Dependencias de useCallback
+    }, [sortBy, sortOrder, filterPriority, searchKeyword, currentUser?.id]); // Dependencias de useCallback
 
     // --- EFECTO PARA CARGAR LAS SOLICITUDES ---
     // Se ejecutará cuando 'fetchSolicitudes' cambie (es decir, cuando cambien los parámetros de búsqueda/filtro)
     // o cuando el componente se monte por primera vez.
     useEffect(() => {
         // Ejecutar fetchSolicitudes solo si el currentUserId ya está disponible
-        if (currentUserId !== null) {
+        if (currentUser?.id) {
             fetchSolicitudes();
         }
-    }, [fetchSolicitudes, currentUserId]); // Añadimos currentUserId como dependencia aquí
+    }, [fetchSolicitudes, currentUser]); // Añadimos currentUserId como dependencia aquí
 
 
     // --- Manejador de cambio para la CLASE principal ---

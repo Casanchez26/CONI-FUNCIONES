@@ -1,5 +1,5 @@
 // src/components/PerfilAdmin.js
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../img/ESLOGAN CONI.png';
 import empleadosGif from '../img/empleados.gif';
@@ -9,44 +9,50 @@ import './estilos.css'; // Asegúrate que el CSS esté aquí
 
 const PerfilAdmin = () => {
   const navigate = useNavigate();
+  // Estado para guardar los datos del usuario.
+  const [usuarioLogueadoData, setUsuarioLogueadoData] = useState(null);
 
   useEffect(() => {
-    const usuario = localStorage.getItem("usuarioLogueado");
-    const rol = localStorage.getItem("rol"); // Asegúrate de que el rol esté guardado en localStorage
+    try {
+      // Intentamos obtener el objeto de usuario completo del localStorage.
+      const storedUserJSON = localStorage.getItem("usuarioLogueado");
+      if (storedUserJSON) {
+        // EXPLICACIÓN: JSON.parse()
+        // Convertimos el texto JSON (JavaScript Object Notation) en un objeto de JavaScript.
+        // Esto es necesario porque localStorage solo almacena texto.
+        const parsedUser = JSON.parse(storedUserJSON);
+        setUsuarioLogueadoData(parsedUser);
 
-    // Verifica si el usuario está logueado y si el rol es 'admin'
-    if (!usuario || rol !== "admin") {
+        // Verificamos el rol directamente desde el objeto que acabamos de leer
+        if (parsedUser?.rolAutenticacion !== "admin") {
+          console.log("perfilAdmin: Rol incorrecto, redirigiendo a login.");
+          navigate("/login");
+        }
+        else {
+          // si no hay datos en localStorage, el usuario no está logueado.
+          console.log("perfilAdmin: No hay datos de usuario, redirigiendo a login.");
+          navigate("/login");
+        }
+      }
+    } catch (e) {
+      console.error("Error al leer datos del usuario de localStorage", e);
+      // En caso de error, redirigimos para evitar que la página se rompa.
       navigate("/login");
     }
   }, [navigate]);
 
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/CONI1.0/LogoutServlet", {
-        method: "GET",
-        credentials: "include"
-      });
-
-      if (response.ok) {
-        // Limpia los datos de sesión y localStorage
-        localStorage.removeItem("usuarioLogueado");
-        localStorage.removeItem("rol");
-        sessionStorage.clear(); // Limpia sessionStorage si es necesario
-
-        // Guarda un mensaje de cierre de sesión exitoso
-        localStorage.setItem("logoutMessage", "Sesión cerrada exitosamente");
-
-        // Redirige a la página principal y fuerza una recarga completa
-        window.location.href = "/"; // Esto redirige y fuerza una recarga completa
-      } else {
-        console.error("Error al cerrar sesión, status:", response.status);
-        alert("Error al cerrar sesión. Por favor, inténtalo de nuevo.");
-      }
-    } catch (error) {
-      console.error("Error al cerrar sesión", error);
-      alert("Error de red al cerrar sesión. Por favor, verifica tu conexión.");
-    }
+  const handleLogout = () => {
+    // Ya no necesitamos la llamada al backend para cerrar sesión,
+    // simplemente limpiamos el localStorage para simular el cierre.
+    localStorage.removeItem("usuarioLogueado");
+    localStorage.setItem("logoutMessage", "Sesión cerrada exitosamente");
+    // Redirigir a la página de inicio de sesión
+    navigate("/login");
   };
+
+  if (!usuarioLogueadoData) {
+    return <div>Cargando perfil...</div>;
+  }
 
   return (
     <div>
