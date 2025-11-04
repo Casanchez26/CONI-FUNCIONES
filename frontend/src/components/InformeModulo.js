@@ -36,21 +36,21 @@ const InformeModulo = () => {
     // --- EFECTO PARA OBTENER Y VERIFICAR EL USUARIO AUTENTICADO ---
     useEffect(() => {
         const storedUserJSON = localStorage.getItem("usuarioLogueado");
-        
+
         if (storedUserJSON) {
             try {
                 const usuario = JSON.parse(storedUserJSON);
-                
+
                 // Usamos las propiedades del objeto JSON para verificar la sesión
-                const id = usuario.idUsuario || usuario.id; 
-                const rol = usuario.rolAutenticacion; 
+                const id = usuario.idUsuario || usuario.id;
+                const rol = usuario.rolAutenticacion;
                 const cargo = usuario.cargoEmpleado;
 
                 if (id && rol && cargo) {
                     setCurrentUser({ id, rol, cargo });
-                    
+
                     // REGLA: Este módulo es solo para Administradores.
-                    if (rol !== 'admin') { 
+                    if (rol !== 'admin') {
                         console.warn(`InformeModulo: Rol (${rol}) sin permiso. Redirigiendo a inicio.`);
                         navigate("/");
                     }
@@ -59,7 +59,7 @@ const InformeModulo = () => {
                     navigate("/");
                 }
             } catch (e) {
-                 console.error("Error al parsear datos del usuario de localStorage:", e);
+                console.error("Error al parsear datos del usuario de localStorage:", e);
                 navigate("/");
             }
         } else {
@@ -262,7 +262,6 @@ const InformeModulo = () => {
                 <div className="barra-superior">
                     <nav>
                         <ul>
-                            <li><button onClick={() => navigate("/perfilAdmin")}>Volver perfil administrador</button></li>
                             <li><button onClick={handleLogout}>Cerrar sesión</button></li>
                         </ul>
                     </nav>

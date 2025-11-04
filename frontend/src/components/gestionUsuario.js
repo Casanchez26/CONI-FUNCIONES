@@ -54,7 +54,6 @@ const GestionarUsuario = () => {
                 <div className="barra-superior">
                     <nav>
                         <ul>
-                            <li><a href="/perfilAdmin">Perfil Administrador</a></li>
                             <li><button onClick={handleLogout}>Cerrar sesión</button></li>
                         </ul>
                     </nav>

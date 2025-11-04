@@ -1,0 +1,17 @@
+# ------------------------------------------------------------------
+# Dockerfile.backend (CORREGIDO FINALMENTE con el nombre del JAR exacto)
+# ------------------------------------------------------------------
+
+FROM tomcat:10.1-jdk21-temurin
+
+# 1. Copia e instala el driver MySQL usando el nombre específico del archivo.
+# ASUME que el archivo 'mysql-connector-j-9.3.0.jar' está en ./backend/lib/
+COPY ./backend/lib/mysql-connector-j-9.3.0.jar /usr/local/tomcat/lib/
+
+# Establece el directorio de trabajo
+WORKDIR /usr/local/tomcat/webapps
+
+# Copia tu archivo WAR compilado a la carpeta webapps de Tomcat.
+COPY ./backend/dist/CONI1.0.war ./
+
+EXPOSE 8080

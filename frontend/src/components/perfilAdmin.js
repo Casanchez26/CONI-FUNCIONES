@@ -1,11 +1,10 @@
-// src/components/PerfilAdmin.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../img/ESLOGAN CONI.png';
 import empleadosGif from '../img/empleados.gif';
 import gestionarUsuarioGif from '../img/gestionar usuario.gif';
 import generarInformeGif from '../img/generar informe.gif';
-import './estilos.css'; // Asegúrate que el CSS esté aquí
+import './estilos.css'; // Asegúrate que el CSS esté importado
 
 const PerfilAdmin = () => {
   const navigate = useNavigate();
@@ -14,42 +13,44 @@ const PerfilAdmin = () => {
 
   useEffect(() => {
     try {
-      // Intentamos obtener el objeto de usuario completo del localStorage.
+      // 1. Intentamos obtener el objeto de usuario completo del localStorage.
       const storedUserJSON = localStorage.getItem("usuarioLogueado");
+
       if (storedUserJSON) {
-        // EXPLICACIÓN: JSON.parse()
-        // Convertimos el texto JSON (JavaScript Object Notation) en un objeto de JavaScript.
-        // Esto es necesario porque localStorage solo almacena texto.
+        // Convertimos el texto JSON a objeto de JavaScript.
         const parsedUser = JSON.parse(storedUserJSON);
         setUsuarioLogueadoData(parsedUser);
 
-        // Verificamos el rol directamente desde el objeto que acabamos de leer
+        // 2. Verificamos el rol. Si el rol es INCORRECTO, redirigimos.
+        //    Si el rol es "admin", simplemente continuamos.
         if (parsedUser?.rolAutenticacion !== "admin") {
           console.log("perfilAdmin: Rol incorrecto, redirigiendo a login.");
           navigate("/login");
         }
-        else {
-          // si no hay datos en localStorage, el usuario no está logueado.
-          console.log("perfilAdmin: No hay datos de usuario, redirigiendo a login.");
-          navigate("/login");
-        }
+        // *** CORRECCIÓN APLICADA AQUÍ ***
+        // El bloque `else` anterior ha sido eliminado para que el 'admin' continúe.
+
+      } else {
+        // 3. Si NO hay datos en localStorage, el usuario no está logueado.
+        console.log("perfilAdmin: No hay datos de sesión, redirigiendo a login.");
+        navigate("/login");
       }
     } catch (e) {
       console.error("Error al leer datos del usuario de localStorage", e);
       // En caso de error, redirigimos para evitar que la página se rompa.
       navigate("/login");
     }
-  }, [navigate]);
+  }, [navigate]); // Dependencia del hook
 
   const handleLogout = () => {
-    // Ya no necesitamos la llamada al backend para cerrar sesión,
-    // simplemente limpiamos el localStorage para simular el cierre.
+    // Limpiamos el localStorage para simular el cierre de sesión.
     localStorage.removeItem("usuarioLogueado");
     localStorage.setItem("logoutMessage", "Sesión cerrada exitosamente");
     // Redirigir a la página de inicio de sesión
     navigate("/login");
   };
 
+  // Mostrar "Cargando" mientras se obtienen los datos.
   if (!usuarioLogueadoData) {
     return <div>Cargando perfil...</div>;
   }
@@ -61,7 +62,6 @@ const PerfilAdmin = () => {
         <div className="barra-superior">
           <nav>
             <ul>
-              <li><a href="/cambiar-password">Cambiar contraseña</a></li>
               <li><button onClick={handleLogout}>Cerrar sesión</button></li>
             </ul>
           </nav>

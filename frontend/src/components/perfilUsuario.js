@@ -84,13 +84,7 @@ const PerfilUsuario = () => {
                     <button><a href="/EmpleadoForm">Empleados</a></button>
                 </div>
             </div>
-            <div className="informe">
-                <a href="/InformeModulo"><img src={genearInformeGif} alt="generar_informe"/></a>
-                <div className="container text-informe">
-                    <button><a href="/InformeModulo">Generar informe</a></button>
-                </div>
-            </div>
-        </div>
+                   </div>
     </main>
 
 </div>

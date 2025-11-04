@@ -25,7 +25,6 @@ function Home() {
         <div className="barra-superior">
           <nav>
             <ul>
-              <li><a href="#contacto">Contacto</a></li>
               <li><Link to="/login">Ingresa</Link></li>
             </ul>
           </nav>

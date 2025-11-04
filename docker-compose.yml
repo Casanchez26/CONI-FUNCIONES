@@ -1,39 +1,55 @@
+version: '3.8'
+
 services:
-  # Servicio para el Backend
-  backend:
-    build:
-      context: ./backend
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/conibd
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ""
-    depends_on:
-      - db
-
-  # Servicio para el Frontend
-  frontend:
-    build:
-      context: ./frontend
-    ports:
-      - "3000:80"
-    environment:
-      REACT_APP_API_URL: http://backend:8080
-    depends_on:
-      - backend
-
-  # Servicio para la Base de Datos
+  # ----------------------------------------------------
+  # 1. BASE DE DATOS (MySQL)
+  # El nombre de este servicio es 'db' y coincide con tu URL de conexión: jdbc:mysql://db:3306/conibd
+  # ----------------------------------------------------
   db:
     image: mysql:8.0
     restart: always
     environment:
+      # Credenciales: root y contraseña vacía (como en tu código Java)
       MYSQL_ROOT_PASSWORD: ""
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
       MYSQL_DATABASE: conibd
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
     volumes:
-      - db_data:/var/lib/mysql
+      # Inicializa la BD con tu archivo init.sql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 10s
+      retries: 10
+    # No es necesario exponer el puerto si solo el backend lo usa, pero lo dejaremos por si lo necesitas
+    # ports:
+    #   - "3306:3306" 
 
-volumes:
-  db_data:
+    # ----------------------------------------------------
+    # 2. BACKEND (Java)
+    # ----------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      # Mapea el puerto del contenedor (8080) a tu máquina (8080)
+      - "8080:8080"
+    depends_on:
+      # Asegura que la BD esté lista antes de iniciar el backend
+      db:
+        condition: service_healthy
+    # El backend puede acceder a la BD usando el nombre 'db'
+
+    # ----------------------------------------------------
+    # 3. FRONTEND (React)
+    # ----------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      # Mapea el puerto del contenedor (80) a tu máquina (3000)
+      - "3000:80"
+    depends_on:
+      # Asegura que el backend esté listo
+      - backend

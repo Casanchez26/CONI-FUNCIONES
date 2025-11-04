@@ -818,7 +818,7 @@ table th,
 table td,
 .description-column {
     border: 1px solid rgba(255, 255, 255, 0.5);
-    padding: 12px 15px;
+    padding: 12px 5px;
     text-align: center;
     /* Centra el texto en todas las celdas */
 
