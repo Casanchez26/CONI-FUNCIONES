@@ -71,7 +71,7 @@ function Login() {
       // Usamos `fetch` para enviar una solicitud al servidor.
       // `async/await` nos permite trabajar con promesas (peticiones asíncronas)
       // de una manera más fácil de leer.
-      const response = await fetch('http://localhost:8080/CONI1.0/LoginServlet', {
+      const response = await fetch('http://localhost:8080/CONI/LoginServlet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -126,7 +126,7 @@ const ComprasForm = () => {
                 queryParams.append('search', searchKeyword.trim());
             }
 
-            const url = `http://localhost:8080/CONI1.0/api/solicitudes?${queryParams.toString()}`;
+            const url = `http://localhost:8080/CONI/api/solicitudes?${queryParams.toString()}`;
 
             const response = await fetch(url, {
                 credentials: 'include'

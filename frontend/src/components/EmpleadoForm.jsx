@@ -53,7 +53,7 @@ const EmpleadoForm = () => {
 
     const fetchEmpleados = async () => {
         try {
-            const response = await fetch("http://localhost:8080/CONI1.0/EmpleadoServlet", {
+            const response = await fetch("http://localhost:8080/CONI/EmpleadoServlet", {
                 method: "GET",
                 credentials: "include"
             });
@@ -94,7 +94,7 @@ const EmpleadoForm = () => {
 
     const handleLogout = async () => {
         try {
-            const response = await fetch("http://localhost:8080/CONI1.0/LogoutServlet", {
+            const response = await fetch("http://localhost:8080/CONI/LogoutServlet", {
                 method: "GET",
                 credentials: "include"
             });
@@ -134,7 +134,7 @@ const EmpleadoForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const url = "http://localhost:8080/CONI1.0/EmpleadoServlet";
+        const url = "http://localhost:8080/CONI/EmpleadoServlet";
         const method = (vista === "editar") ? "PUT" : "POST";
 
         try {
@@ -171,7 +171,7 @@ const EmpleadoForm = () => {
             return;
         }
         try {
-            const response = await fetch(`http://localhost:8080/CONI1.0/EmpleadoServlet?cedula=${empleado.cedula}`, {
+            const response = await fetch(`http://localhost:8080/CONI/EmpleadoServlet?cedula=${empleado.cedula}`, {
                 method: "DELETE",
                 credentials: "include"
             });
