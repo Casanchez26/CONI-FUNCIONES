@@ -10,7 +10,7 @@ import java.sql.SQLException;
 
 public class Conexion {
 
-    private static final String url = "jdbc:mysql://localhost:3306/conibd";
+    private static final String URL = "jdbc:mysql://localhost:3306/conibd";
     private static final String user = "root";
     private static final String password = "";
 
@@ -20,6 +20,6 @@ public class Conexion {
         } catch (ClassNotFoundException e) {
             throw new SQLException("Error al cargar el Driver MySQL", e);
         }
-        return DriverManager.getConnection(url, user, password);
+        return DriverManager.getConnection(URL, user, password);
     }
 }
